@@ -1,0 +1,12 @@
+# macOS
+.DS_Store
+
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# Java / Maven (compiled files)
+target/
+
+# Environment variables (passwords, keys)
+.env
