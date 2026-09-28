@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:17
+    container_name: mapa-de-vagas-db
+    environment:
+      POSTGRES_DB: mapa_de_vagas
+      POSTGRES_USER: mapa
+      POSTGRES_PASSWORD: mapa
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+volumes:
+  db-data:
