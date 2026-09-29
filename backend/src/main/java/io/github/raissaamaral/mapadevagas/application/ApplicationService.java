@@ -2,6 +2,8 @@ package io.github.raissaamaral.mapadevagas.application;
 
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class ApplicationService {
 
@@ -41,6 +43,13 @@ public class ApplicationService {
         Application application = repository.findById(id)
                 .orElseThrow(() -> new ApplicationNotFoundException(id));
         return toResponse(application);
+    }
+
+    public List<ApplicationResponse> findAll() {
+        return repository.findAll()
+                .stream()
+                .map(this::toResponse)
+                .toList();
     }
 
     private ApplicationResponse toResponse(Application application) {

@@ -5,6 +5,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/applications")
 public class ApplicationController {
@@ -26,4 +28,8 @@ public class ApplicationController {
         return ResponseEntity.ok(service.findById(id));
     }
 
+    @GetMapping
+    public ResponseEntity<List<ApplicationResponse>> findAll() {
+        return ResponseEntity.ok(service.findAll());
+    }
 }
