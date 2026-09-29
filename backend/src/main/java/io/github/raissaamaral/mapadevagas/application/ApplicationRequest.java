@@ -8,6 +8,8 @@ import java.time.LocalDate;
 public record ApplicationRequest(
         @NotBlank @Size(max = 150) String company,
         @NotBlank @Size(max = 150) String jobTitle,
+        // Only http/https links are accepted: the URL is rendered as a clickable
+        // link in the frontend, and schemes like "javascript:" would allow XSS
         @Size(max = 2048) @Pattern(regexp = "^https?://\\S+$") String jobUrl,
         JobSource source,
         WorkModel workModel,

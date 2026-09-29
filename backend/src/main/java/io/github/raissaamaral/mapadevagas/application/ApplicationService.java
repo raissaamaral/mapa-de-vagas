@@ -29,6 +29,8 @@ public class ApplicationService {
         application.setTotalStages(request.totalStages());
         application.setNotes(request.notes());
 
+        // Status is always SAVED on creation. It only changes through the
+        // status endpoint, which records the history used by the metrics
         application.setStatus(ApplicationStatus.SAVED);
         Application saved = repository.save(application);
 
