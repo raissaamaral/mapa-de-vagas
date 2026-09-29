@@ -37,6 +37,12 @@ public class ApplicationService {
         return toResponse(saved);
     }
 
+    public ApplicationResponse findById(Long id) {
+        Application application = repository.findById(id)
+                .orElseThrow(() -> new ApplicationNotFoundException(id));
+        return toResponse(application);
+    }
+
     private ApplicationResponse toResponse(Application application) {
         return new ApplicationResponse(
                 application.getId(),

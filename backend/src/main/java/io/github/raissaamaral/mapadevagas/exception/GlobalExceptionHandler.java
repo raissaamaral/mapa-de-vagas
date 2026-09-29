@@ -1,5 +1,6 @@
 package io.github.raissaamaral.mapadevagas.exception;
 
+import io.github.raissaamaral.mapadevagas.application.ApplicationNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -31,5 +32,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleMalformedBody(HttpMessageNotReadableException ex) {
         ApiError error = new ApiError(400, "Malformed request body", Map.of());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    // Safe to return ex.getMessage(): the message is defined in
+    // ApplicationNotFoundException and only contains the requested id
+    @ExceptionHandler(ApplicationNotFoundException.class)
+    public ResponseEntity<ApiError> handleNotFound(ApplicationNotFoundException ex) {
+        ApiError error = new ApiError(404, ex.getMessage(), Map.of());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
     }
 }
