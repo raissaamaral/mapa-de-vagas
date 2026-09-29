@@ -1,0 +1,1 @@
+ALTER TABLE application ALTER COLUMN job_url DROP NOT NULL;
