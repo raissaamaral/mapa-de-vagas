@@ -37,6 +37,13 @@ public class ApplicationService {
                 .toList();
     }
 
+    public ApplicationResponse update(Long id, ApplicationRequest request) {
+        Application application = findApplicationOrThrow(id);
+        applyRequest(application, request);
+        Application saved = repository.save(application);
+        return toResponse(saved);
+    }
+
     private ApplicationResponse toResponse(Application application) {
         return new ApplicationResponse(
                 application.getId(),

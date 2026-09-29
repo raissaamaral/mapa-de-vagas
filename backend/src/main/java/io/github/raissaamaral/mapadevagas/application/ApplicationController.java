@@ -32,4 +32,10 @@ public class ApplicationController {
     public ResponseEntity<List<ApplicationResponse>> findAll() {
         return ResponseEntity.ok(service.findAll());
     }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ApplicationResponse> update(@PathVariable Long id,
+                                                      @Valid @RequestBody ApplicationRequest request) {
+        return ResponseEntity.ok(service.update(id, request));
+    }
 }
