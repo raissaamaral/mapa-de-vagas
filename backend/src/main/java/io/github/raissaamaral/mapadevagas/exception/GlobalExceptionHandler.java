@@ -8,6 +8,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.Map;
 import java.util.HashMap;
@@ -40,5 +41,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleNotFound(ApplicationNotFoundException ex) {
         ApiError error = new ApiError(404, ex.getMessage(), Map.of());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+
+    // ex.getName() is safe (parameter name defined in the controller);
+    // ex.getMessage() is not (mentions internal Java types)
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiError> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        ApiError error = new ApiError(400, "Invalid value for parameter: " + ex.getName(), Map.of());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 }
