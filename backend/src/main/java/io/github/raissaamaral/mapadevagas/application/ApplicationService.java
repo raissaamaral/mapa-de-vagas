@@ -16,26 +16,12 @@ public class ApplicationService {
     public ApplicationResponse create(ApplicationRequest request) {
 
         Application application = new Application();
-        application.setCompany(request.company());
-        application.setJobTitle(request.jobTitle());
-        application.setJobUrl(request.jobUrl());
-        application.setSource(request.source());
-        application.setWorkModel(request.workModel());
-        application.setSeniority(request.seniority());
-        application.setLocation(request.location());
-        application.setSalary(request.salary());
-        application.setTechStack(request.techStack());
-        application.setJobDescription(request.jobDescription());
-        application.setApplicationDeadline(request.applicationDeadline());
-        application.setAppliedOn(request.appliedOn());
-        application.setTotalStages(request.totalStages());
-        application.setNotes(request.notes());
+        applyRequest(application, request);
 
         // Status is always SAVED on creation. It only changes through the
         // status endpoint, which records the history used by the metrics
         application.setStatus(ApplicationStatus.SAVED);
         Application saved = repository.save(application);
-
         return toResponse(saved);
     }
 
@@ -71,5 +57,22 @@ public class ApplicationService {
                 application.getTotalStages(),
                 application.getNotes()
         );
+    }
+
+    private void applyRequest(Application application, ApplicationRequest request) {
+        application.setCompany(request.company());
+        application.setJobTitle(request.jobTitle());
+        application.setJobUrl(request.jobUrl());
+        application.setSource(request.source());
+        application.setWorkModel(request.workModel());
+        application.setSeniority(request.seniority());
+        application.setLocation(request.location());
+        application.setSalary(request.salary());
+        application.setTechStack(request.techStack());
+        application.setJobDescription(request.jobDescription());
+        application.setApplicationDeadline(request.applicationDeadline());
+        application.setAppliedOn(request.appliedOn());
+        application.setTotalStages(request.totalStages());
+        application.setNotes(request.notes());
     }
 }
