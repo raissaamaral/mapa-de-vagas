@@ -26,8 +26,7 @@ public class ApplicationService {
     }
 
     public ApplicationResponse findById(Long id) {
-        Application application = repository.findById(id)
-                .orElseThrow(() -> new ApplicationNotFoundException(id));
+        Application application = findApplicationOrThrow(id);
         return toResponse(application);
     }
 
@@ -74,5 +73,10 @@ public class ApplicationService {
         application.setAppliedOn(request.appliedOn());
         application.setTotalStages(request.totalStages());
         application.setNotes(request.notes());
+    }
+
+    private Application findApplicationOrThrow(Long id) {
+        return repository.findById(id)
+                .orElseThrow(() -> new ApplicationNotFoundException(id));
     }
 }
