@@ -44,6 +44,11 @@ public class ApplicationService {
         return toResponse(saved);
     }
 
+    public void delete(Long id) {
+        Application application = findApplicationOrThrow(id);
+        repository.delete(application);
+    }
+
     private ApplicationResponse toResponse(Application application) {
         return new ApplicationResponse(
                 application.getId(),

@@ -38,4 +38,10 @@ public class ApplicationController {
                                                       @Valid @RequestBody ApplicationRequest request) {
         return ResponseEntity.ok(service.update(id, request));
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        service.delete(id);
+        return ResponseEntity.noContent().build();
+    }
 }
