@@ -36,6 +36,11 @@ public class ApplicationController {
         return ResponseEntity.ok(service.findAll(status, source, workModel));
     }
 
+    @GetMapping("/saved")
+    public ResponseEntity<List<ApplicationResponse>> findSaved() {
+        return ResponseEntity.ok(service.findSaved());
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<ApplicationResponse> update(@PathVariable Long id,
                                                       @Valid @RequestBody ApplicationRequest request) {

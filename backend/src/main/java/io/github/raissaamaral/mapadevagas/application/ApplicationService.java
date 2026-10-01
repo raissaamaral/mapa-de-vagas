@@ -94,6 +94,13 @@ public class ApplicationService {
                 .toList();
     }
 
+    public List<ApplicationResponse> findSaved() {
+        return repository.findByStatusOrderByApplicationDeadlineAscIdDesc(ApplicationStatus.SAVED)
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
     private void recordHistory(Application application) {
         historyRepository.save(new StatusHistory(application, application.getStatus(), Instant.now()));
     }
