@@ -29,8 +29,11 @@ public class ApplicationController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ApplicationResponse>> findAll() {
-        return ResponseEntity.ok(service.findAll());
+    public ResponseEntity<List<ApplicationResponse>> findAll(
+            @RequestParam(required = false) ApplicationStatus status,
+            @RequestParam(required = false) JobSource source,
+            @RequestParam(required = false) WorkModel workModel) {
+        return ResponseEntity.ok(service.findAll(status, source, workModel));
     }
 
     @PutMapping("/{id}")
