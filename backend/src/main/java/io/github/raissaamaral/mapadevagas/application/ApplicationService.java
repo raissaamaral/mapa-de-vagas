@@ -1,5 +1,7 @@
 package io.github.raissaamaral.mapadevagas.application;
 
+import org.springframework.data.domain.Example;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,8 +39,13 @@ public class ApplicationService {
         return toResponse(application);
     }
 
-    public List<ApplicationResponse> findAll() {
-        return repository.findAll()
+    public List<ApplicationResponse> findAll(ApplicationStatus status, JobSource source, WorkModel workModel) {
+        Application probe = new Application();
+        probe.setStatus(status);
+        probe.setSource(source);
+        probe.setWorkModel(workModel);
+
+        return repository.findAll(Example.of(probe), Sort.by(Sort.Direction.DESC, "id"))
                 .stream()
                 .map(this::toResponse)
                 .toList();
@@ -84,6 +91,13 @@ public class ApplicationService {
         return historyRepository.findByApplicationIdOrderByChangedAtAsc(id)
                 .stream()
                 .map(history -> new StatusHistoryResponse(history.getStatus(), history.getChangedAt()))
+                .toList();
+    }
+
+    public List<ApplicationResponse> findSaved() {
+        return repository.findByStatusOrderByApplicationDeadlineAscIdDesc(ApplicationStatus.SAVED)
+                .stream()
+                .map(this::toResponse)
                 .toList();
     }
 
