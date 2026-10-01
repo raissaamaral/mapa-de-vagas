@@ -10,6 +10,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -57,5 +58,24 @@ class ApplicationControllerTest {
                 .andExpect(jsonPath("$.errors.jobUrl").exists());
 
         verify(service, never()).create(any());
+    }
+
+    @Test
+    void findAllShouldPassFiltersToService() throws Exception {
+        mockMvc.perform(get("/applications")
+                        .param("status", "APPLIED")
+                        .param("workModel", "REMOTE"))
+                .andExpect(status().isOk());
+
+        verify(service).findAll(ApplicationStatus.APPLIED, null, WorkModel.REMOTE);
+    }
+
+    @Test
+    void findAllShouldReturnBadRequestWhenFilterIsInvalid() throws Exception {
+        mockMvc.perform(get("/applications").param("status", "ABC"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Invalid value for parameter: status"));
+
+        verify(service, never()).findAll(any(), any(), any());
     }
 }
