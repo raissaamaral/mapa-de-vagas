@@ -44,4 +44,15 @@ public class ApplicationController {
         service.delete(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<ApplicationResponse> changeStatus(@PathVariable Long id,
+                                                            @Valid @RequestBody StatusChangeRequest request) {
+        return ResponseEntity.ok(service.changeStatus(id, request));
+    }
+
+    @GetMapping("/{id}/history")
+    public ResponseEntity<List<StatusHistoryResponse>> findHistory(@PathVariable Long id) {
+        return ResponseEntity.ok(service.findHistory(id));
+    }
 }
