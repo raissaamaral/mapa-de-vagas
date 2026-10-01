@@ -1,20 +1,26 @@
 package io.github.raissaamaral.mapadevagas.application;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
 public class ApplicationService {
 
     private final ApplicationRepository repository;
+    private final StatusHistoryRepository historyRepository;
 
-    public ApplicationService(ApplicationRepository repository) {
+    public ApplicationService(ApplicationRepository repository,
+                              StatusHistoryRepository historyRepository) {
         this.repository = repository;
+        this.historyRepository = historyRepository;
     }
 
+    @Transactional
     public ApplicationResponse create(ApplicationRequest request) {
-
         Application application = new Application();
         applyRequest(application, request);
 
@@ -22,6 +28,7 @@ public class ApplicationService {
         // status endpoint, which records the history used by the metrics
         application.setStatus(ApplicationStatus.SAVED);
         Application saved = repository.save(application);
+        recordHistory(saved);
         return toResponse(saved);
     }
 
@@ -47,6 +54,46 @@ public class ApplicationService {
     public void delete(Long id) {
         Application application = findApplicationOrThrow(id);
         repository.delete(application);
+    }
+
+    @Transactional
+    public ApplicationResponse changeStatus(Long id, StatusChangeRequest request) {
+        Application application = findApplicationOrThrow(id);
+        ApplicationStatus newStatus = request.status();
+
+        if (application.getStatus() == newStatus) {
+            throw new InvalidStatusChangeException(newStatus);
+        }
+
+        application.setStatus(newStatus);
+
+        if (newStatus == ApplicationStatus.APPLIED && application.getAppliedOn() == null) {
+            application.setAppliedOn(LocalDate.now());
+        }
+
+        Application saved = repository.save(application);
+        recordHistory(saved);
+        return toResponse(saved);
+    }
+
+    public List<StatusHistoryResponse> findHistory(Long id) {
+        // Goes through the same lookup as every endpoint: returns 404 for
+        // unknown ids and will get the ownership check with authentication
+        findApplicationOrThrow(id);
+
+        return historyRepository.findByApplicationIdOrderByChangedAtAsc(id)
+                .stream()
+                .map(history -> new StatusHistoryResponse(history.getStatus(), history.getChangedAt()))
+                .toList();
+    }
+
+    private void recordHistory(Application application) {
+        historyRepository.save(new StatusHistory(application, application.getStatus(), Instant.now()));
+    }
+
+    private Application findApplicationOrThrow(Long id) {
+        return repository.findById(id)
+                .orElseThrow(() -> new ApplicationNotFoundException(id));
     }
 
     private ApplicationResponse toResponse(Application application) {
@@ -85,10 +132,5 @@ public class ApplicationService {
         application.setAppliedOn(request.appliedOn());
         application.setTotalStages(request.totalStages());
         application.setNotes(request.notes());
-    }
-
-    private Application findApplicationOrThrow(Long id) {
-        return repository.findById(id)
-                .orElseThrow(() -> new ApplicationNotFoundException(id));
     }
 }

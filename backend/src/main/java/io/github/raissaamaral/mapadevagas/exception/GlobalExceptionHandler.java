@@ -1,6 +1,7 @@
 package io.github.raissaamaral.mapadevagas.exception;
 
 import io.github.raissaamaral.mapadevagas.application.ApplicationNotFoundException;
+import io.github.raissaamaral.mapadevagas.application.InvalidStatusChangeException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -48,6 +49,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ApiError> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
         ApiError error = new ApiError(400, "Invalid value for parameter: " + ex.getName(), Map.of());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    // Safe to return ex.getMessage(): the message is defined in
+    // InvalidStatusChangeException and only contains the status
+    @ExceptionHandler(InvalidStatusChangeException.class)
+    public ResponseEntity<ApiError> handleInvalidStatusChange(InvalidStatusChangeException ex) {
+        ApiError error = new ApiError(400, ex.getMessage(), Map.of());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 }
