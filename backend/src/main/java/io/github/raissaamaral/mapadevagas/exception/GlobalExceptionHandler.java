@@ -2,6 +2,7 @@ package io.github.raissaamaral.mapadevagas.exception;
 
 import io.github.raissaamaral.mapadevagas.application.ApplicationNotFoundException;
 import io.github.raissaamaral.mapadevagas.application.InvalidStatusChangeException;
+import io.github.raissaamaral.mapadevagas.user.EmailAlreadyRegisteredException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -58,5 +59,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleInvalidStatusChange(InvalidStatusChangeException ex) {
         ApiError error = new ApiError(400, ex.getMessage(), Map.of());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    // Safe to return ex.getMessage(): the message is defined in
+    // EmailAlreadyRegisteredException and contains no user data
+    @ExceptionHandler(EmailAlreadyRegisteredException.class)
+    public ResponseEntity<ApiError> handleEmailAlreadyRegistered(EmailAlreadyRegisteredException ex) {
+        ApiError error = new ApiError(409, ex.getMessage(), Map.of());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 }
