@@ -7,6 +7,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -41,13 +42,13 @@ class ApplicationControllerTest {
                 """;
 
         mockMvc.perform(post("/applications")
-                        .with(jwt())
+                        .with(authenticatedUser())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.company").exists());
 
-        verify(service, never()).create(any());
+        verify(service, never()).create(any(), any());
     }
 
     @Test
@@ -61,32 +62,32 @@ class ApplicationControllerTest {
                 """;
 
         mockMvc.perform(post("/applications")
-                        .with(jwt())
+                        .with(authenticatedUser())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.jobUrl").exists());
 
-        verify(service, never()).create(any());
+        verify(service, never()).create(any(), any());
     }
 
     @Test
-    void findAllShouldPassFiltersToService() throws Exception {
-        mockMvc.perform(get("/applications").with(jwt())
+    void findAllShouldPassUserAndFiltersToService() throws Exception {
+        mockMvc.perform(get("/applications").with(authenticatedUser())
                         .param("status", "APPLIED")
                         .param("workModel", "REMOTE"))
                 .andExpect(status().isOk());
 
-        verify(service).findAll(ApplicationStatus.APPLIED, null, WorkModel.REMOTE);
+        verify(service).findAll(1L, ApplicationStatus.APPLIED, null, WorkModel.REMOTE);
     }
 
     @Test
     void findAllShouldReturnBadRequestWhenFilterIsInvalid() throws Exception {
-        mockMvc.perform(get("/applications").with(jwt()).param("status", "ABC"))
+        mockMvc.perform(get("/applications").with(authenticatedUser()).param("status", "ABC"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Invalid value for parameter: status"));
 
-        verify(service, never()).findAll(any(), any(), any());
+        verify(service, never()).findAll(any(), any(), any(), any());
     }
 
     @Test
@@ -94,6 +95,10 @@ class ApplicationControllerTest {
         mockMvc.perform(get("/applications"))
                 .andExpect(status().isUnauthorized());
 
-        verify(service, never()).findAll(any(), any(), any());
+        verify(service, never()).findAll(any(), any(), any(), any());
+    }
+
+    private static JwtRequestPostProcessor authenticatedUser() {
+        return jwt().jwt(token -> token.subject("1"));
     }
 }
