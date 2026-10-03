@@ -1,7 +1,8 @@
 package io.github.raissaamaral.mapadevagas.application;
 
-import org.springframework.data.domain.Example;
+import io.github.raissaamaral.mapadevagas.user.UserRepository;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,17 +15,21 @@ public class ApplicationService {
 
     private final ApplicationRepository repository;
     private final StatusHistoryRepository historyRepository;
+    private final UserRepository userRepository;
 
     public ApplicationService(ApplicationRepository repository,
-                              StatusHistoryRepository historyRepository) {
+                              StatusHistoryRepository historyRepository,
+                              UserRepository userRepository) {
         this.repository = repository;
         this.historyRepository = historyRepository;
+        this.userRepository = userRepository;
     }
 
     @Transactional
-    public ApplicationResponse create(ApplicationRequest request) {
+    public ApplicationResponse create(Long userId, ApplicationRequest request) {
         Application application = new Application();
         applyRequest(application, request);
+        application.setOwner(userRepository.getReferenceById(userId));
 
         // Status is always SAVED on creation. It only changes through the
         // status endpoint, which records the history used by the metrics
@@ -34,38 +39,51 @@ public class ApplicationService {
         return toResponse(saved);
     }
 
-    public ApplicationResponse findById(Long id) {
-        Application application = findApplicationOrThrow(id);
-        return toResponse(application);
+    public ApplicationResponse findById(Long userId, Long id) {
+        return toResponse(findApplicationOrThrow(userId, id));
     }
 
-    public List<ApplicationResponse> findAll(ApplicationStatus status, JobSource source, WorkModel workModel) {
-        Application probe = new Application();
-        probe.setStatus(status);
-        probe.setSource(source);
-        probe.setWorkModel(workModel);
+    public List<ApplicationResponse> findAll(Long userId, ApplicationStatus status,
+                                             JobSource source, WorkModel workModel) {
+        Specification<Application> spec = belongsTo(userId);
+        if (status != null) {
+            spec = spec.and(hasValue("status", status));
+        }
+        if (source != null) {
+            spec = spec.and(hasValue("source", source));
+        }
+        if (workModel != null) {
+            spec = spec.and(hasValue("workModel", workModel));
+        }
 
-        return repository.findAll(Example.of(probe), Sort.by(Sort.Direction.DESC, "id"))
+        return repository.findAll(spec, Sort.by(Sort.Direction.DESC, "id"))
                 .stream()
                 .map(this::toResponse)
                 .toList();
     }
 
-    public ApplicationResponse update(Long id, ApplicationRequest request) {
-        Application application = findApplicationOrThrow(id);
+    public List<ApplicationResponse> findSaved(Long userId) {
+        return repository.findByOwnerIdAndStatusOrderByApplicationDeadlineAscIdDesc(userId, ApplicationStatus.SAVED)
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    public ApplicationResponse update(Long userId, Long id, ApplicationRequest request) {
+        Application application = findApplicationOrThrow(userId, id);
         applyRequest(application, request);
         Application saved = repository.save(application);
         return toResponse(saved);
     }
 
-    public void delete(Long id) {
-        Application application = findApplicationOrThrow(id);
+    public void delete(Long userId, Long id) {
+        Application application = findApplicationOrThrow(userId, id);
         repository.delete(application);
     }
 
     @Transactional
-    public ApplicationResponse changeStatus(Long id, StatusChangeRequest request) {
-        Application application = findApplicationOrThrow(id);
+    public ApplicationResponse changeStatus(Long userId, Long id, StatusChangeRequest request) {
+        Application application = findApplicationOrThrow(userId, id);
         ApplicationStatus newStatus = request.status();
 
         if (application.getStatus() == newStatus) {
@@ -83,10 +101,10 @@ public class ApplicationService {
         return toResponse(saved);
     }
 
-    public List<StatusHistoryResponse> findHistory(Long id) {
-        // Goes through the same lookup as every endpoint: returns 404 for
-        // unknown ids and will get the ownership check with authentication
-        findApplicationOrThrow(id);
+    public List<StatusHistoryResponse> findHistory(Long userId, Long id) {
+        // Goes through the owner-aware lookup: another user's application
+        // returns 404 before any history is read
+        findApplicationOrThrow(userId, id);
 
         return historyRepository.findByApplicationIdOrderByChangedAtAsc(id)
                 .stream()
@@ -94,20 +112,23 @@ public class ApplicationService {
                 .toList();
     }
 
-    public List<ApplicationResponse> findSaved() {
-        return repository.findByStatusOrderByApplicationDeadlineAscIdDesc(ApplicationStatus.SAVED)
-                .stream()
-                .map(this::toResponse)
-                .toList();
+    private Application findApplicationOrThrow(Long userId, Long id) {
+        // The owner is part of the query: another user's application is simply
+        // not found, so it returns 404 and its existence is not revealed
+        return repository.findByIdAndOwnerId(id, userId)
+                .orElseThrow(() -> new ApplicationNotFoundException(id));
+    }
+
+    private static Specification<Application> belongsTo(Long userId) {
+        return (root, query, cb) -> cb.equal(root.get("owner").get("id"), userId);
+    }
+
+    private static Specification<Application> hasValue(String field, Object value) {
+        return (root, query, cb) -> cb.equal(root.get(field), value);
     }
 
     private void recordHistory(Application application) {
         historyRepository.save(new StatusHistory(application, application.getStatus(), Instant.now()));
-    }
-
-    private Application findApplicationOrThrow(Long id) {
-        return repository.findById(id)
-                .orElseThrow(() -> new ApplicationNotFoundException(id));
     }
 
     private ApplicationResponse toResponse(Application application) {

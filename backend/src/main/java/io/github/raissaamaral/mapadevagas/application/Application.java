@@ -1,5 +1,6 @@
 package io.github.raissaamaral.mapadevagas.application;
 
+import io.github.raissaamaral.mapadevagas.user.User;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
@@ -11,6 +12,10 @@ public class Application {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id")
+    private User owner;
 
     private String company;
     private String jobTitle;
@@ -160,5 +165,13 @@ public class Application {
 
     public Long getId() {
         return id;
+    }
+
+    public User getOwner() {
+        return owner;
+    }
+
+    public void setOwner(User owner) {
+        this.owner = owner;
     }
 }

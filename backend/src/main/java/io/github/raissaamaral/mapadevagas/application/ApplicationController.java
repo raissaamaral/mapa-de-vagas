@@ -3,6 +3,8 @@ package io.github.raissaamaral.mapadevagas.application;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,49 +20,60 @@ public class ApplicationController {
     }
 
     @PostMapping
-    public ResponseEntity<ApplicationResponse> create(@Valid @RequestBody ApplicationRequest request) {
-        ApplicationResponse response = service.create(request);
+    public ResponseEntity<ApplicationResponse> create(@AuthenticationPrincipal Jwt jwt,
+                                                      @Valid @RequestBody ApplicationRequest request) {
+        ApplicationResponse response = service.create(userId(jwt), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<ApplicationResponse> findById(@PathVariable Long id) {
-        return ResponseEntity.ok(service.findById(id));
     }
 
     @GetMapping
     public ResponseEntity<List<ApplicationResponse>> findAll(
+            @AuthenticationPrincipal Jwt jwt,
             @RequestParam(required = false) ApplicationStatus status,
             @RequestParam(required = false) JobSource source,
             @RequestParam(required = false) WorkModel workModel) {
-        return ResponseEntity.ok(service.findAll(status, source, workModel));
+        return ResponseEntity.ok(service.findAll(userId(jwt), status, source, workModel));
     }
 
     @GetMapping("/saved")
-    public ResponseEntity<List<ApplicationResponse>> findSaved() {
-        return ResponseEntity.ok(service.findSaved());
+    public ResponseEntity<List<ApplicationResponse>> findSaved(@AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(service.findSaved(userId(jwt)));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ApplicationResponse> findById(@AuthenticationPrincipal Jwt jwt,
+                                                        @PathVariable Long id) {
+        return ResponseEntity.ok(service.findById(userId(jwt), id));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApplicationResponse> update(@PathVariable Long id,
+    public ResponseEntity<ApplicationResponse> update(@AuthenticationPrincipal Jwt jwt,
+                                                      @PathVariable Long id,
                                                       @Valid @RequestBody ApplicationRequest request) {
-        return ResponseEntity.ok(service.update(id, request));
+        return ResponseEntity.ok(service.update(userId(jwt), id, request));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        service.delete(id);
+    public ResponseEntity<Void> delete(@AuthenticationPrincipal Jwt jwt, @PathVariable Long id) {
+        service.delete(userId(jwt), id);
         return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/{id}/status")
-    public ResponseEntity<ApplicationResponse> changeStatus(@PathVariable Long id,
+    public ResponseEntity<ApplicationResponse> changeStatus(@AuthenticationPrincipal Jwt jwt,
+                                                            @PathVariable Long id,
                                                             @Valid @RequestBody StatusChangeRequest request) {
-        return ResponseEntity.ok(service.changeStatus(id, request));
+        return ResponseEntity.ok(service.changeStatus(userId(jwt), id, request));
     }
 
     @GetMapping("/{id}/history")
-    public ResponseEntity<List<StatusHistoryResponse>> findHistory(@PathVariable Long id) {
-        return ResponseEntity.ok(service.findHistory(id));
+    public ResponseEntity<List<StatusHistoryResponse>> findHistory(@AuthenticationPrincipal Jwt jwt,
+                                                                   @PathVariable Long id) {
+        return ResponseEntity.ok(service.findHistory(userId(jwt), id));
+    }
+
+    private static Long userId(Jwt jwt) {
+        // The owner always comes from the validated token, never from the request
+        return Long.valueOf(jwt.getSubject());
     }
 }
