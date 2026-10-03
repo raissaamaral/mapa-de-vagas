@@ -1,6 +1,8 @@
 package io.github.raissaamaral.mapadevagas.user;
 
+import io.github.raissaamaral.mapadevagas.security.AuthCookieFactory;
 import io.github.raissaamaral.mapadevagas.security.SecurityConfig;
+import io.github.raissaamaral.mapadevagas.security.TokenService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -18,7 +20,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(AuthController.class)
-@Import(SecurityConfig.class)
+@Import({SecurityConfig.class, AuthCookieFactory.class})
 class AuthControllerTest {
 
     @Autowired
@@ -29,6 +31,9 @@ class AuthControllerTest {
 
     @MockitoBean
     private JwtDecoder jwtDecoder;
+
+    @MockitoBean
+    private TokenService tokenService;
 
     @Test
     void registerShouldReturnBadRequestWhenPasswordIsTooShort() throws Exception {

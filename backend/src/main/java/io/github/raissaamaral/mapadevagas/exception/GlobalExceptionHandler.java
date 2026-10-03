@@ -3,6 +3,7 @@ package io.github.raissaamaral.mapadevagas.exception;
 import io.github.raissaamaral.mapadevagas.application.ApplicationNotFoundException;
 import io.github.raissaamaral.mapadevagas.application.InvalidStatusChangeException;
 import io.github.raissaamaral.mapadevagas.user.EmailAlreadyRegisteredException;
+import io.github.raissaamaral.mapadevagas.user.InvalidCredentialsException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -67,5 +68,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleEmailAlreadyRegistered(EmailAlreadyRegisteredException ex) {
         ApiError error = new ApiError(409, ex.getMessage(), Map.of());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
+    // Safe to return ex.getMessage(): it is the same generic message for an
+    // unknown email and a wrong password
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<ApiError> handleInvalidCredentials(InvalidCredentialsException ex) {
+        ApiError error = new ApiError(401, ex.getMessage(), Map.of());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
     }
 }
