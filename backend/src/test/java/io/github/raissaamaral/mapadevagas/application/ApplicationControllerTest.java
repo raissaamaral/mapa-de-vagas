@@ -1,21 +1,26 @@
 package io.github.raissaamaral.mapadevagas.application;
 
+import io.github.raissaamaral.mapadevagas.security.SecurityConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(ApplicationController.class)
+@Import(SecurityConfig.class)
 class ApplicationControllerTest {
 
     @Autowired
@@ -23,6 +28,9 @@ class ApplicationControllerTest {
 
     @MockitoBean
     private ApplicationService service;
+
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
 
     @Test
     void createShouldReturnBadRequestWhenCompanyIsMissing() throws Exception {
@@ -33,6 +41,7 @@ class ApplicationControllerTest {
                 """;
 
         mockMvc.perform(post("/applications")
+                        .with(jwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest())
@@ -52,6 +61,7 @@ class ApplicationControllerTest {
                 """;
 
         mockMvc.perform(post("/applications")
+                        .with(jwt())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest())
@@ -62,7 +72,7 @@ class ApplicationControllerTest {
 
     @Test
     void findAllShouldPassFiltersToService() throws Exception {
-        mockMvc.perform(get("/applications")
+        mockMvc.perform(get("/applications").with(jwt())
                         .param("status", "APPLIED")
                         .param("workModel", "REMOTE"))
                 .andExpect(status().isOk());
@@ -72,9 +82,17 @@ class ApplicationControllerTest {
 
     @Test
     void findAllShouldReturnBadRequestWhenFilterIsInvalid() throws Exception {
-        mockMvc.perform(get("/applications").param("status", "ABC"))
+        mockMvc.perform(get("/applications").with(jwt()).param("status", "ABC"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Invalid value for parameter: status"));
+
+        verify(service, never()).findAll(any(), any(), any());
+    }
+
+    @Test
+    void requestsWithoutAuthenticationShouldReturnUnauthorized() throws Exception {
+        mockMvc.perform(get("/applications"))
+                .andExpect(status().isUnauthorized());
 
         verify(service, never()).findAll(any(), any(), any());
     }

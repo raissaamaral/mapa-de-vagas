@@ -8,6 +8,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.Instant;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -60,5 +64,32 @@ class UserServiceTest {
                 () -> service.register(new RegisterRequest("rai@example.com", "senha-forte-123")));
 
         verify(repository, never()).save(any());
+    }
+
+    @Test
+    void authenticateShouldReturnUserWhenPasswordMatches() {
+        User user = new User("rai@example.com", passwordEncoder.encode("senha-forte-123"), Instant.now());
+        when(repository.findByEmail("rai@example.com")).thenReturn(Optional.of(user));
+
+        UserResponse response = service.authenticate(new LoginRequest("Rai@Example.com", "senha-forte-123"));
+
+        assertEquals("rai@example.com", response.email());
+    }
+
+    @Test
+    void authenticateShouldThrowWhenPasswordIsWrong() {
+        User user = new User("rai@example.com", passwordEncoder.encode("senha-forte-123"), Instant.now());
+        when(repository.findByEmail("rai@example.com")).thenReturn(Optional.of(user));
+
+        assertThrows(InvalidCredentialsException.class,
+                () -> service.authenticate(new LoginRequest("rai@example.com", "senha-errada-123")));
+    }
+
+    @Test
+    void authenticateShouldThrowWhenEmailDoesNotExist() {
+        when(repository.findByEmail("ninguem@example.com")).thenReturn(Optional.empty());
+
+        assertThrows(InvalidCredentialsException.class,
+                () -> service.authenticate(new LoginRequest("ninguem@example.com", "senha-forte-123")));
     }
 }
