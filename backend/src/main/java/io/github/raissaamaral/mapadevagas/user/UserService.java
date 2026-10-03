@@ -13,11 +13,15 @@ public class UserService {
 
     private final UserRepository repository;
     private final PasswordEncoder passwordEncoder;
+    private final LoginAttemptService loginAttemptService;
     private final String dummyPasswordHash;
 
-    public UserService(UserRepository repository, PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository repository,
+                       PasswordEncoder passwordEncoder,
+                       LoginAttemptService loginAttemptService) {
         this.repository = repository;
         this.passwordEncoder = passwordEncoder;
+        this.loginAttemptService = loginAttemptService;
         // Checked when the email does not exist, so a failed login takes the
         // same time either way and response times do not reveal registered emails
         this.dummyPasswordHash = passwordEncoder.encode("timing-protection-dummy");
@@ -38,15 +42,24 @@ public class UserService {
     }
 
     public UserResponse authenticate(LoginRequest request) {
-        Optional<User> user = repository.findByEmail(normalizeEmail(request.email()));
+        String email = normalizeEmail(request.email());
 
+        // Checked before the password: a blocked email cannot be used to keep
+        // guessing, whether or not the account exists
+        if (loginAttemptService.isBlocked(email)) {
+            throw new TooManyLoginAttemptsException();
+        }
+
+        Optional<User> user = repository.findByEmail(email);
         String hash = user.map(User::getPasswordHash).orElse(dummyPasswordHash);
         boolean passwordMatches = passwordEncoder.matches(request.password(), hash);
 
         if (user.isEmpty() || !passwordMatches) {
+            loginAttemptService.recordFailure(email);
             throw new InvalidCredentialsException();
         }
 
+        loginAttemptService.recordSuccess(email);
         return toResponse(user.get());
     }
 

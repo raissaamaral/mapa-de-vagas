@@ -121,4 +121,22 @@ class AuthControllerTest {
         mockMvc.perform(get("/auth/me"))
                 .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    void loginShouldReturnTooManyRequestsWhenEmailIsBlocked() throws Exception {
+        when(service.authenticate(any())).thenThrow(new TooManyLoginAttemptsException());
+
+        String body = """
+            {
+              "email": "rai@example.com",
+              "password": "senha-forte-123"
+            }
+            """;
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().doesNotExist(HttpHeaders.SET_COOKIE));
+    }
 }

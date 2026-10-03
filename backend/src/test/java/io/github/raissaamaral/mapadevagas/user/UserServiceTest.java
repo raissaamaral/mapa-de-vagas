@@ -8,6 +8,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
 
@@ -31,7 +32,7 @@ class UserServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new UserService(repository, passwordEncoder);
+        service = new UserService(repository, passwordEncoder, new LoginAttemptService(Clock.systemUTC()));
     }
 
     @Test
@@ -92,4 +93,19 @@ class UserServiceTest {
         assertThrows(InvalidCredentialsException.class,
                 () -> service.authenticate(new LoginRequest("ninguem@example.com", "senha-forte-123")));
     }
+
+@Test
+void authenticateShouldBlockAfterFiveFailedAttempts() {
+    User user = new User("rai@example.com", passwordEncoder.encode("senha-forte-123"), Instant.now());
+    when(repository.findByEmail("rai@example.com")).thenReturn(Optional.of(user));
+
+    for (int i = 0; i < 5; i++) {
+        assertThrows(InvalidCredentialsException.class,
+                () -> service.authenticate(new LoginRequest("rai@example.com", "senha-errada-123")));
+    }
+
+    // Even the correct password is rejected while the email is blocked
+    assertThrows(TooManyLoginAttemptsException.class,
+            () -> service.authenticate(new LoginRequest("rai@example.com", "senha-forte-123")));
+}
 }
