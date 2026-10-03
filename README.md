@@ -2,9 +2,9 @@
 
 A web application to organize my own job search: track applications, the stages of each hiring process, and metrics about the search.
 
-I'm building it as a real tool for my own use and as a hands-on way to learn backend development with a professional workflow: issues, branches, pull requests, tests and incremental releases.
+I'm building it as a real tool for my own use and as a hands-on way to learn web development, with a focus on the backend, using a professional workflow: issues, branches, pull requests, tests and incremental releases.
 
-> 🚧 **Status:** V0 (backend) and authentication complete. Next: frontend and deployment.
+> 🚧 **Status:** V0 (backend) and authentication complete. Frontend in progress; deployment next.
 
 ## Features
 
@@ -19,6 +19,7 @@ I'm building it as a real tool for my own use and as a hands-on way to learn bac
 ## Tech stack
 
 - **Backend:** Java 21, Spring Boot 4 (Web, Data JPA, Validation, Security)
+- **Frontend:** React, TypeScript, Vite, Tailwind CSS, shadcn/ui
 - **Authentication:** JWT (HS256) in an HttpOnly cookie, validated by Spring Security's OAuth2 Resource Server
 - **Database:** PostgreSQL 17, with schema versioned by Flyway
 - **Tests:** JUnit 5, Mockito, MockMvc, Spring Security Test, integration tests against PostgreSQL
@@ -26,13 +27,15 @@ I'm building it as a real tool for my own use and as a hands-on way to learn bac
 
 ## Architecture
 
-A layered monolith:
+A monorepo with two parts:
 
-- **Controller:** receives HTTP requests, validates input and returns responses
-- **Service:** business rules (status history, automatic dates, ownership)
-- **Repository:** data access with Spring Data JPA
+- **`backend/`:** a layered monolith
+    - **Controller:** receives HTTP requests, validates input and returns responses
+    - **Service:** business rules (status history, automatic dates, ownership)
+    - **Repository:** data access with Spring Data JPA
+- **`frontend/`:** a single-page application in React that talks to the API
 
-Code is organized by feature: `application/` (job applications and status history) and `user/` (accounts and authentication endpoints), with cross-cutting concerns in `security/` and `exception/`.
+Backend code is organized by feature: `application/` (job applications and status history) and `user/` (accounts and authentication endpoints), with cross-cutting concerns in `security/` and `exception/`.
 
 ## API
 
@@ -74,7 +77,9 @@ Errors follow a consistent format:
 
 ## Running locally
 
-**Prerequisites:** Java 21 and Docker.
+**Prerequisites:** Java 21, Docker and Node.js 24 LTS (installing via [nvm](https://github.com/nvm-sh/nvm) is recommended).
+
+### Backend
 
 ```bash
 # 1. create your local environment file and generate a JWT signing key
@@ -108,6 +113,18 @@ curl -c /tmp/cookies.txt -X POST http://localhost:8080/auth/login \
 curl -b /tmp/cookies.txt http://localhost:8080/applications
 ```
 
+### Frontend
+
+With the backend running:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The app runs at `http://localhost:5173`. Other scripts: `npm run build` (type-checks and builds for production into `dist/`) and `npm run lint` (ESLint).
+
 ## Technical decisions
 
 - **Flyway instead of auto-generated schema:** every database change is a versioned SQL migration, and Hibernate only validates that entities match the tables.
@@ -117,6 +134,7 @@ curl -b /tmp/cookies.txt http://localhost:8080/applications
 - **JWT in an HttpOnly cookie instead of `localStorage`:** JavaScript cannot read the token, which reduces the impact of XSS.
 - **Ownership enforced inside the queries:** applications are always looked up by id *and* owner, so another user's data is simply not found.
 - **JPA Specifications for filters:** optional filters are combined in code, always including the owner.
+- **Dev proxy instead of CORS in development:** Vite forwards `/api/*` to the backend, so the browser sees a single origin and the auth cookie works as it will in production. The `/api` prefix keeps frontend routes from colliding with API endpoints.
 - **Monolith:** the simplest architecture that fits the problem; the layered structure keeps it organized as it grows.
 
 ## Security
@@ -133,7 +151,7 @@ Security is treated as a requirement from the start:
 - DTOs prevent mass assignment; job URLs accept only `http`/`https` (prevents `javascript:` links)
 - Size limits on all text fields; parameterized queries only
 - Error responses never expose stack traces or library exception messages
-- The local database is bound to `127.0.0.1` only; secrets live in a Git-ignored `.env` file
+- The local database is bound to `127.0.0.1` only; secrets live in Git-ignored `.env` files
 
 **Required before deployment:** CSRF tokens (with the frontend) and rate limiting of login and registration.
 
@@ -141,10 +159,10 @@ Security is treated as a requirement from the start:
 
 - [x] **V0:** backend: applications, status history, filters, tests
 - [x] **Authentication:** multiple users, each one seeing only their own data
+- [ ] **Frontend:** React + TypeScript (in progress)
 - [ ] **Before deployment:** rate limiting, CSRF tokens
-- [ ] **Frontend:** React + TypeScript, including a kanban view
 - [ ] **Deployment:** Docker, cloud hosting, CI/CD with GitHub Actions
-- [ ] Later: password reset by email, companies and hiring stages, resume versions, dashboard and metrics, AI-assisted job description analysis
+- [ ] Later: kanban view, password reset by email, companies and hiring stages, resume versions, dashboard and metrics, AI-assisted job description analysis
 
 ## Development workflow
 
