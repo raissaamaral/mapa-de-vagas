@@ -7,11 +7,13 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.ObjectPostProcessor;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.web.csrf.CsrfFilter;
 
 import java.util.Set;
 
@@ -27,8 +29,21 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 // CSRF token in a readable XSRF-TOKEN cookie; the frontend sends it
-                // back in the X-XSRF-TOKEN header on every state-changing request
-                .csrf(csrf -> csrf.spa())
+                // back in the X-XSRF-TOKEN header on every state-changing request.
+                // The resource server skips CSRF on requests that carry a token,
+                // assuming it comes in a header. Here the token is a cookie, sent by
+                // the browser automatically, so CSRF must be required on every
+                // unsafe request
+                .csrf(csrf -> {
+                    csrf.spa();
+                    csrf.withObjectPostProcessor(new ObjectPostProcessor<CsrfFilter>() {
+                        @Override
+                        public <O extends CsrfFilter> O postProcess(O filter) {
+                            filter.setRequireCsrfProtectionMatcher(CsrfFilter.DEFAULT_CSRF_MATCHER);
+                            return filter;
+                        }
+                    });
+                })
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
