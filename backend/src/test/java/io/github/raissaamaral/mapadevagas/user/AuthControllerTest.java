@@ -145,4 +145,31 @@ class AuthControllerTest {
                 .andExpect(status().isTooManyRequests())
                 .andExpect(cookie().doesNotExist(SecurityConfig.TOKEN_COOKIE));
     }
+
+    @Test
+    void loginShouldReturnForbiddenWithoutCsrfToken() throws Exception {
+        String body = """
+            {
+              "email": "rai@example.com",
+              "password": "senha-forte-123"
+            }
+            """;
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status").value(403))
+                .andExpect(jsonPath("$.message").value("Access denied"));
+
+        verify(service, never()).authenticate(any());
+    }
+
+    @Test
+    void anyRequestShouldIssueReadableCsrfCookie() throws Exception {
+        mockMvc.perform(get("/auth/me"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(cookie().exists("XSRF-TOKEN"))
+                .andExpect(cookie().httpOnly("XSRF-TOKEN", false));
+    }
 }
