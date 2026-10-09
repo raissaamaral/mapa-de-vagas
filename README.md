@@ -30,9 +30,9 @@ I'm building it as a real tool for my own use and as a hands-on way to learn web
 A monorepo with two parts:
 
 - **`backend/`:** a layered monolith
-    - **Controller:** receives HTTP requests, validates input and returns responses
-    - **Service:** business rules (status history, automatic dates, ownership)
-    - **Repository:** data access with Spring Data JPA
+  - **Controller:** receives HTTP requests, validates input and returns responses
+  - **Service:** business rules (status history, automatic dates, ownership)
+  - **Repository:** data access with Spring Data JPA
 - **`frontend/`:** a single-page application in React that talks to the API
 
 Backend code is organized by feature: `application/` (job applications and status history) and `user/` (accounts and authentication endpoints), with cross-cutting concerns in `security/` and `exception/`.
@@ -99,15 +99,21 @@ cd backend
 
 The API runs at `http://localhost:8080`. The application refuses to start without a valid `JWT_SECRET`.
 
-To try the API with `curl`, register a user, then store the login cookie in a file outside the project:
+To try the API with `curl`, store the cookies in a file outside the project. Requests that change data (`POST`, `PUT`, `PATCH`, `DELETE`) must send the CSRF token, which any response provides in the `XSRF-TOKEN` cookie:
 
 ```bash
-curl -X POST http://localhost:8080/auth/register \
+# get a CSRF token
+curl -s -c /tmp/cookies.txt http://localhost:8080/auth/me > /dev/null
+CSRF=$(awk '$6 == "XSRF-TOKEN" {print $7}' /tmp/cookies.txt)
+
+curl -b /tmp/cookies.txt -c /tmp/cookies.txt -X POST http://localhost:8080/auth/register \
   -H "Content-Type: application/json" \
+  -H "X-XSRF-TOKEN: $CSRF" \
   -d '{"email": "you@example.com", "password": "your-password"}'
 
-curl -c /tmp/cookies.txt -X POST http://localhost:8080/auth/login \
+curl -b /tmp/cookies.txt -c /tmp/cookies.txt -X POST http://localhost:8080/auth/login \
   -H "Content-Type: application/json" \
+  -H "X-XSRF-TOKEN: $CSRF" \
   -d '{"email": "you@example.com", "password": "your-password"}'
 
 curl -b /tmp/cookies.txt http://localhost:8080/applications
@@ -135,6 +141,7 @@ The app runs at `http://localhost:5173`. Other scripts: `npm run build` (type-ch
 - **Ownership enforced inside the queries:** applications are always looked up by id *and* owner, so another user's data is simply not found.
 - **JPA Specifications for filters:** optional filters are combined in code, always including the owner.
 - **Dev proxy instead of CORS in development:** Vite forwards `/api/*` to the backend, so the browser sees a single origin and the auth cookie works as it will in production. The `/api` prefix keeps frontend routes from colliding with API endpoints.
+- **CSRF tokens even with `SameSite=Strict`:** a second layer of protection. Spring's resource server skips CSRF on requests that carry a token, assuming it travels in a header that browsers never send on their own; here the token is a cookie, so CSRF is explicitly required on every state-changing request.
 - **Monolith:** the simplest architecture that fits the problem; the layered structure keeps it organized as it grows.
 
 ## Security
@@ -144,6 +151,7 @@ Security is treated as a requirement from the start:
 - Passwords hashed with BCrypt; never stored, logged or returned
 - JWT signed with a 256-bit key from an environment variable; the algorithm, expiration and issuer are validated by Spring Security
 - Token stored in an `HttpOnly`, `SameSite=Strict` cookie (`Secure` in production)
+- CSRF protection on every state-changing request: the token is sent in a readable `XSRF-TOKEN` cookie and must come back in the `X-XSRF-TOKEN` header, including on requests authenticated by the cookie
 - Every endpoint is closed by default; only registration, login and logout are public
 - The user id always comes from the validated token, never from the request
 - Accessing another user's application returns `404`, without revealing that it exists
@@ -153,14 +161,14 @@ Security is treated as a requirement from the start:
 - Error responses never expose stack traces or library exception messages
 - The local database is bound to `127.0.0.1` only; secrets live in Git-ignored `.env` files
 
-**Required before deployment:** CSRF tokens (with the frontend) and rate limiting of login and registration.
+**Required before deployment:** rate limiting of registration and API requests by IP.
 
 ## Roadmap
 
 - [x] **V0:** backend: applications, status history, filters, tests
 - [x] **Authentication:** multiple users, each one seeing only their own data
 - [ ] **Frontend:** React + TypeScript (in progress)
-- [ ] **Before deployment:** rate limiting, CSRF tokens
+- [ ] **Before deployment:** rate limiting
 - [ ] **Deployment:** Docker, cloud hosting, CI/CD with GitHub Actions
 - [ ] Later: kanban view, password reset by email, companies and hiring stages, resume versions, dashboard and metrics, AI-assisted job description analysis
 
