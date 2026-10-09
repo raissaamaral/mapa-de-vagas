@@ -18,6 +18,7 @@ import java.time.Duration;
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -48,6 +49,7 @@ class AuthControllerTest {
                 """;
 
         mockMvc.perform(post("/auth/register")
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest())
@@ -66,6 +68,7 @@ class AuthControllerTest {
                 """;
 
         mockMvc.perform(post("/auth/register")
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest())
@@ -88,6 +91,7 @@ class AuthControllerTest {
             """;
 
         mockMvc.perform(post("/auth/login")
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isOk())
@@ -109,11 +113,12 @@ class AuthControllerTest {
             """;
 
         mockMvc.perform(post("/auth/login")
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.message").value("Invalid email or password"))
-                .andExpect(header().doesNotExist(HttpHeaders.SET_COOKIE));
+                .andExpect(cookie().doesNotExist(SecurityConfig.TOKEN_COOKIE));
     }
 
     @Test
@@ -134,9 +139,38 @@ class AuthControllerTest {
             """;
 
         mockMvc.perform(post("/auth/login")
+                        .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isTooManyRequests())
-                .andExpect(header().doesNotExist(HttpHeaders.SET_COOKIE));
+                .andExpect(cookie().doesNotExist(SecurityConfig.TOKEN_COOKIE));
+    }
+
+    @Test
+    void loginShouldReturnForbiddenWithoutCsrfToken() throws Exception {
+        String body = """
+            {
+              "email": "rai@example.com",
+              "password": "senha-forte-123"
+            }
+            """;
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isForbidden())
+                .andExpect(content().contentType("application/json;charset=UTF-8"))
+                .andExpect(jsonPath("$.status").value(403))
+                .andExpect(jsonPath("$.message").value("Access denied"));
+
+        verify(service, never()).authenticate(any());
+    }
+
+    @Test
+    void anyRequestShouldIssueReadableCsrfCookie() throws Exception {
+        mockMvc.perform(get("/auth/me"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(cookie().exists("XSRF-TOKEN"))
+                .andExpect(cookie().httpOnly("XSRF-TOKEN", false));
     }
 }

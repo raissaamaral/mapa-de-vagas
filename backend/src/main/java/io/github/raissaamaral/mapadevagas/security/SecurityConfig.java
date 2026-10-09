@@ -4,12 +4,18 @@ import jakarta.servlet.http.Cookie;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.ObjectPostProcessor;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.web.csrf.CsrfFilter;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Set;
 
 @Configuration
@@ -23,10 +29,22 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // CSRF tokens will be enabled together with the frontend (required
-                // before deployment). Until then, the SameSite=Strict cookie keeps
-                // cross-site requests from sending the token.
-                .csrf(csrf -> csrf.disable())
+                // CSRF token in a readable XSRF-TOKEN cookie; the frontend sends it
+                // back in the X-XSRF-TOKEN header on every state-changing request.
+                // The resource server skips CSRF on requests that carry a token,
+                // assuming it comes in a header. Here the token is a cookie, sent by
+                // the browser automatically, so CSRF must be required on every
+                // unsafe request
+                .csrf(csrf -> {
+                    csrf.spa();
+                    csrf.withObjectPostProcessor(new ObjectPostProcessor<CsrfFilter>() {
+                        @Override
+                        public <O extends CsrfFilter> O postProcess(O filter) {
+                            filter.setRequireCsrfProtectionMatcher(CsrfFilter.DEFAULT_CSRF_MATCHER);
+                            return filter;
+                        }
+                    });
+                })
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
@@ -34,7 +52,9 @@ public class SecurityConfig {
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .bearerTokenResolver(cookieTokenResolver())
-                        .jwt(Customizer.withDefaults()));
+                        .jwt(Customizer.withDefaults()))
+                .exceptionHandling(exceptions -> exceptions
+                        .accessDeniedHandler(jsonAccessDeniedHandler()));
 
         return http.build();
     }
@@ -58,6 +78,15 @@ public class SecurityConfig {
                 }
             }
             return null;
+        };
+    }
+
+    private AccessDeniedHandler jsonAccessDeniedHandler() {
+        return (request, response, exception) -> {
+            response.setStatus(HttpStatus.FORBIDDEN.value());
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+            response.getWriter().write("{\"status\":403,\"message\":\"Access denied\"}");
         };
     }
 }
