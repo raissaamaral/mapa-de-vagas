@@ -15,6 +15,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.csrf.CsrfFilter;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Set;
 
 @Configuration
@@ -84,6 +85,7 @@ public class SecurityConfig {
         return (request, response, exception) -> {
             response.setStatus(HttpStatus.FORBIDDEN.value());
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.setCharacterEncoding(StandardCharsets.UTF_8.name());
             response.getWriter().write("{\"status\":403,\"message\":\"Access denied\"}");
         };
     }
